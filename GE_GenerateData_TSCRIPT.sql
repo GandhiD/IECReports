@@ -12,8 +12,8 @@ set nocount on
 
 --set @OPEID = '025593'  --HP
 --set @OPEID = '039696'  --Gardena
-set @OPEID = '031133' --Fresno
---set @OPEID = '023058' --FCC
+--set @OPEID = '031133' --Fresno
+set @OPEID = '023058' --FCC
 
 if object_Id('tempdb..#tStudentPop') is not null begin
 	drop table #tStudentPop
@@ -476,7 +476,6 @@ on mstS.Campuscode= tC.CampusCode
 inner join #tEnrollCodes tE
 on mstS.StatusCode = tE.StatusCode 
 where (mstS.StartDate1 <= @Todate or mstS.OrigStartDate <= @Todate )
---and mstS.SSN = '581116197'
 and left(mstS.SSN,3) <> '000'
 and right(mstS.SSN,4) <> '0000'
 and SUBSTRING(mstS.SSN,4,2) <> '00'
@@ -923,6 +922,7 @@ inner join #tAR tR
 on tsp.studnum = tR.StudNum
 inner join #tTransCode tC
 on tR.transcode = tc.TransCode 
+where tR.TransPostDate<=@ToDate
 Group by
 	tSP.SSN,
 	tP.Cipcode
@@ -1047,7 +1047,7 @@ inner join #tAR tAR
 on tG.ssn = tAR.SSN
 inner join #tTransCode tTC
 on tAr.transcode = tTC.TransCode 
-where tAR.TransPostDate between tAW.AwardYearStartDate and tAW.AwardYearEndDate 
+--where tAR.TransPostDate between tAW.AwardYearStartDate and tAW.AwardYearEndDate 
 Group by 
 	tG.RId
 ) qFed
@@ -1055,7 +1055,7 @@ on tG.RId = qFed.RId
 
 
 Update tG set
-	mInstitutionalDebt = case when qb.ARBalanceasofStatusDate<0 then 0 else qb.ARBalanceasofStatusDate end,
+	mInstitutionalDebt = case when AttendStatus<>'E' then case when qb.ARBalanceasofStatusDate<0 then 0 else qb.ARBalanceasofStatusDate end else 0 end,
 	mPrivateLoanAmt=qB.PrivateDebtasofStatusDate
 from #tGEout tG
 inner join 
@@ -1065,6 +1065,7 @@ inner join
 		mstS.SSN,
 		mstP.CIPCode as CIPCode,
 		mstC.OPEID,
+		ts.dAttendStatusDate,
 		sum
 			(
 				case 
@@ -1091,9 +1092,9 @@ inner join
 	on tR.transcode = tTC.TransCode 
 	Where tTC.IsIgnoreForARBalance = 0
 	Group By
-		mstS.SSN, mstP.CIPCode,mstC.OPEID
+		mstS.SSN, mstP.CIPCode,mstC.OPEID,ts.dAttendStatusDate
 ) qB
-on tG.ssn = qB.SSN and tG.CIPCode=qB.CIPCode and tG.OPEID=qb.OPEID
+on tG.ssn = qB.SSN and tG.CIPCode=qB.CIPCode and tG.OPEID=qb.OPEID and tg.dAttendStatusDate=qB.dAttendStatusDate
 
 
 
@@ -1116,6 +1117,9 @@ inner join
 on tG.SSN = qTIV.ssn
 and tG.CIPCode = qTIV.CIPCode
 where tG.RID >= qTIV.FirstTIV 
+
+
+
 
 -------------------------------------------------------
 
